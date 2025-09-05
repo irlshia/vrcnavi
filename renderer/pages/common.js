@@ -1,5 +1,55 @@
 // 共通機能とユーティリティ関数
 
+// メモリキャッシュシステム
+const memoryCache = {
+  moreItems: new Map(), // カテゴリ別の「もっと見る」アイテムキャッシュ
+  cacheTime: new Map(), // キャッシュの作成時間
+  CACHE_DURATION: 5 * 60 * 1000, // 5分間のキャッシュ有効期限
+  
+  // キャッシュを取得
+  get(categoryName) {
+    const cacheKey = categoryName;
+    const cached = this.moreItems.get(cacheKey);
+    const cacheTime = this.cacheTime.get(cacheKey);
+    
+    if (cached && cacheTime && (Date.now() - cacheTime) < this.CACHE_DURATION) {
+      console.log(`メモリキャッシュから取得: ${categoryName}`);
+      return cached;
+    }
+    
+    // 期限切れの場合は削除
+    if (cached) {
+      this.moreItems.delete(cacheKey);
+      this.cacheTime.delete(cacheKey);
+    }
+    
+    return null;
+  },
+  
+  // キャッシュを保存
+  set(categoryName, items) {
+    const cacheKey = categoryName;
+    this.moreItems.set(cacheKey, items);
+    this.cacheTime.set(cacheKey, Date.now());
+    console.log(`メモリキャッシュに保存: ${categoryName} (${items.length}件)`);
+  },
+  
+  // キャッシュをクリア
+  clear() {
+    this.moreItems.clear();
+    this.cacheTime.clear();
+    console.log('メモリキャッシュをクリアしました');
+  },
+  
+  // 特定のカテゴリのキャッシュをクリア
+  clearCategory(categoryName) {
+    const cacheKey = categoryName;
+    this.moreItems.delete(cacheKey);
+    this.cacheTime.delete(cacheKey);
+    console.log(`カテゴリキャッシュをクリア: ${categoryName}`);
+  }
+};
+
 // localStorageキャッシュ関数
 function saveBoothItemsCache(data, config) {
   try {
@@ -429,6 +479,14 @@ function showMoreItemsWindow(categoryName, currentItems) {
 async function loadMoreCategoryItems(categoryName, container, maxItems = 6) {
   console.log('loadMoreCategoryItems 関数開始:', { categoryName, maxItems });
   
+  // メモリキャッシュをチェック
+  const cachedItems = memoryCache.get(categoryName);
+  if (cachedItems) {
+    console.log('メモリキャッシュから表示:', cachedItems.length, '件');
+    renderMoreItems(cachedItems, container);
+    return;
+  }
+  
   container.innerHTML = `
     <div style="text-align: center; padding: 40px; color: #888;">
       <div style="font-size: 24px; margin-bottom: 8px;">🔄</div>
@@ -613,6 +671,9 @@ async function loadMoreCategoryItems(categoryName, container, maxItems = 6) {
       
       console.log('フィルタリング完了、表示アイテム数:', filteredItems.length);
       
+      // メモリキャッシュに保存
+      memoryCache.set(categoryName, filteredItems);
+      
       // アイテムを表示
       renderMoreItems(filteredItems, container);
       console.log('renderMoreItems 完了');
@@ -710,17 +771,88 @@ function renderMoreItems(items, container) {
   });
 }
 
-// 設定保存時はlocalStorageキャッシュをクリア
+// 設定保存時はlocalStorageキャッシュとメモリキャッシュをクリア
 window.addEventListener('DOMContentLoaded', () => {
   const origSaveJson = window.electronAPI.saveJson;
   window.electronAPI.saveJson = async (filename, data) => {
     if (filename === "channels") {
       clearBoothItemsCache();
+      memoryCache.clear(); // メモリキャッシュもクリア
     }
     return await origSaveJson(filename, data);
   };
 });
 
+// 画像ダウンロード・管理システム
+const imageManager = {
+  // 画像をダウンロードしてローカルに保存
+  async downloadImage(imageUrl, itemUrl) {
+    try {
+      // ファイル名を生成（URLからハッシュ化）
+      const urlHash = await this.hashString(itemUrl);
+      const extension = this.getImageExtension(imageUrl);
+      const filename = `${urlHash}${extension}`;
+      
+      // 画像をダウンロード
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = this.arrayBufferToBase64(arrayBuffer);
+      
+      // ローカルに保存
+      const result = await window.electronAPI.saveImage(filename, base64);
+      if (result) {
+        return `local://${filename}`;
+      }
+      return imageUrl; // 保存失敗時は元のURLを返す
+    } catch (error) {
+      console.error('画像ダウンロードエラー:', error);
+      return imageUrl; // エラー時は元のURLを返す
+    }
+  },
+
+  // 文字列をハッシュ化
+  async hashString(str) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+  },
+
+  // 画像の拡張子を取得
+  getImageExtension(url) {
+    const match = url.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i);
+    return match ? `.${match[1].toLowerCase()}` : '.jpg';
+  },
+
+  // ArrayBufferをBase64に変換
+  arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  },
+
+  // ローカル画像のURLを生成
+  getLocalImageUrl(filename) {
+    return `local://${filename}`;
+  },
+
+  // 画像ファイルを削除
+  async deleteImage(filename) {
+    try {
+      await window.electronAPI.deleteImage(filename);
+    } catch (error) {
+      console.error('画像削除エラー:', error);
+    }
+  }
+};
+
 window.addEventListener('beforeunload', () => {
   clearBoothItemsCache();
+  memoryCache.clear(); // メモリキャッシュもクリア
 });

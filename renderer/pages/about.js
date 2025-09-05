@@ -35,6 +35,13 @@ VRCNAVI は BOOTHの新着アイテムをお知らせするソフトウェアで
       transition: background-color 0.2s ease;
     ">更新をチェック</button>
   </div>
+
+  <div id="update-history-section" style="margin-top: 32px; padding: 16px; background: #2a2a2a; border-radius: 8px; max-width: 800px;">
+    <h3 style="color: #fff; font-size: 18px; margin-bottom: 16px;">更新履歴</h3>
+    <div id="update-content" style="color: #ccc; font-size: 14px; line-height: 1.6;">
+      読み込み中...
+    </div>
+  </div>
 `;
 
   // 画像読み込み
@@ -64,6 +71,24 @@ VRCNAVI は BOOTHの新着アイテムをお知らせするソフトウェアで
     const versionEl = page.querySelector("#app-version");
     if(versionEl) versionEl.textContent = version;
   })();
+
+  // 更新履歴の読み込み
+  (async () => {
+    const updateEl = page.querySelector('#update-content');
+    try {
+      const md = await window.electronAPI.fetchUpdateMd();
+      if (md && typeof marked !== 'undefined') {
+        updateEl.innerHTML = marked.parse(md);
+      } else if (md) {
+        updateEl.textContent = md;
+      } else {
+        updateEl.textContent = "更新履歴の読み込みに失敗しました。";
+      }
+    } catch (e) {
+      updateEl.textContent = "更新履歴の読み込みに失敗しました。";
+      console.error(e);
+    }
+  })();
   const updateStatus = page.querySelector("#update-status");
   const checkUpdateBtn = page.querySelector("#check-update-btn");
 
@@ -72,7 +97,7 @@ VRCNAVI は BOOTHの新着アイテムをお知らせするソフトウェアで
 
     window.electronAPI.checkForUpdates()
       .then(() => {
-        updateStatus.textContent = "アップデートチェック完了。結果を待ってください。";
+        updateStatus.textContent = "アップデートチェック完了。しばらくお待ち下さい。";
       })
       .catch(() => {
         updateStatus.textContent = "アップデートチェックに失敗しました。";

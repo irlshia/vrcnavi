@@ -11,6 +11,8 @@ console.log("[main] app start");
 const userDataPath = app.getPath("userData");
 const CHANNELS_FILE = path.join(userDataPath, "config.json");
 const BOOTH_CACHE_FILE = path.join(userDataPath, "booth_cache.json");
+const FAVORITES_FILE = path.join(userDataPath, "favorites.json");
+const IMAGES_DIR = path.join(userDataPath, "images");
 
 const CHROME_PATH = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 
@@ -53,9 +55,20 @@ async function loadJsonFile(filepath) {
     console.log(`[File] 読み込み開始: ${filepath}`);
     const text = await fs.readFile(filepath, "utf-8");
     console.log(`[File] 読み込み成功: ${filepath}`);
+    
+    // 空ファイルの場合はデフォルト値を返す
+    if (!text.trim()) {
+      console.log(`[File] ${filepath} は空ファイルです。デフォルト値を返します。`);
+      return [];
+    }
+    
     return JSON.parse(text);
   } catch (e) {
-    console.log(`[File] ${filepath} 読み込み失敗かファイル無し。空オブジェクトを返す。`, e);
+    console.log(`[File] ${filepath} 読み込み失敗かファイル無し。デフォルト値を返す。`, e);
+    // favorites.jsonの場合は空配列を返す
+    if (filepath === FAVORITES_FILE) {
+      return [];
+    }
     return {};
   }
 }
@@ -287,6 +300,49 @@ async function clearBoothCache() {
   }
 }
 
+// 画像を保存
+async function saveImage(filename, base64Data) {
+  try {
+    // imagesディレクトリを作成
+    await fs.mkdir(IMAGES_DIR, { recursive: true });
+    
+    const imagePath = path.join(IMAGES_DIR, filename);
+    const buffer = Buffer.from(base64Data, 'base64');
+    await fs.writeFile(imagePath, buffer);
+    
+    console.log(`[Image] 保存成功: ${filename}`);
+    return true;
+  } catch (e) {
+    console.error(`[Image] 保存エラー: ${filename}`, e);
+    return false;
+  }
+}
+
+// 画像を削除
+async function deleteImage(filename) {
+  try {
+    const imagePath = path.join(IMAGES_DIR, filename);
+    await fs.unlink(imagePath);
+    console.log(`[Image] 削除成功: ${filename}`);
+    return true;
+  } catch (e) {
+    console.error(`[Image] 削除エラー: ${filename}`, e);
+    return false;
+  }
+}
+
+// 画像ファイルを取得
+async function getImage(filename) {
+  try {
+    const imagePath = path.join(IMAGES_DIR, filename);
+    const buffer = await fs.readFile(imagePath);
+    return buffer.toString('base64');
+  } catch (e) {
+    console.error(`[Image] 読み込みエラー: ${filename}`, e);
+    return null;
+  }
+}
+
 // グローバルで一度だけIPCハンドラを登録
 ipcMain.handle("getBoothItemsCombined", async (event, categories, keywords, shops, maxItems) => {
   return await getBoothItemsCombined(categories, keywords, shops, maxItems);
@@ -321,12 +377,34 @@ ipcMain.handle("get-app-version", () => {
   return app.getVersion();
 });
 ipcMain.handle("load-json", async (event, filename) => {
-  const safeFiles = { channels: CHANNELS_FILE };
+  const safeFiles = { 
+    channels: CHANNELS_FILE,
+    favorites: FAVORITES_FILE
+  };
   if (!(filename in safeFiles)) return {};
-  return await loadJsonFile(safeFiles[filename]);
+  
+  const filepath = safeFiles[filename];
+  const result = await loadJsonFile(filepath);
+  
+  // favorites.jsonが空配列の場合、初期ファイルを作成
+  if (filename === "favorites" && Array.isArray(result) && result.length === 0) {
+    try {
+      await fs.access(filepath);
+      // ファイルが存在するが空の場合、正しい空配列で初期化
+      await saveJsonFile(filepath, []);
+    } catch (e) {
+      // ファイルが存在しない場合、空配列で作成
+      await saveJsonFile(filepath, []);
+    }
+  }
+  
+  return result;
 });
 ipcMain.handle("save-json", async (event, filename, data) => {
-  const safeFiles = { channels: CHANNELS_FILE };
+  const safeFiles = { 
+    channels: CHANNELS_FILE,
+    favorites: FAVORITES_FILE
+  };
   if (!(filename in safeFiles)) return false;
   const result = await saveJsonFile(safeFiles[filename], data);
   if (filename === "channels") await loadBackgroundMode();
@@ -340,6 +418,15 @@ ipcMain.handle("save-booth-cache", async (_event, data) => {
 });
 ipcMain.handle("clear-booth-cache", async () => {
   return await clearBoothCache();
+});
+ipcMain.handle("save-image", async (event, filename, base64Data) => {
+  return await saveImage(filename, base64Data);
+});
+ipcMain.handle("delete-image", async (event, filename) => {
+  return await deleteImage(filename);
+});
+ipcMain.handle("get-image", async (event, filename) => {
+  return await getImage(filename);
 });
 
 function createWindow() {

@@ -2,6 +2,7 @@
 const pages = [
   { label: "概要", icon: "fas fa-home", builder: HomeSummary },
   { label: "Booth", icon: "fas fa-store", builder: StartSummary },
+  { label: "お気に入り", icon: "fas fa-heart", builder: FavoritesPage },
   { label: "設定", icon: "fas fa-cog", builder: Settingsmenu },
   { label: "ヘルプ", icon: "fas fa-question-circle", builder: HelpPage },
   { label: "VRCNAVIについて", icon: "fas fa-info-circle", builder: buildAbout },

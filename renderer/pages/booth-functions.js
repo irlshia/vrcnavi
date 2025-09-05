@@ -1,7 +1,32 @@
 // Boothページで使用される関数群
 
 async function loadBoothItemsFromConfig(container, isGrid = false, forceReload = false) {
-  container.textContent = "読み込み中...";
+  // アニメーション付きローディング表示
+  container.innerHTML = `
+    <div class="loading-container" style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+    ">
+      <div class="loading-spinner" style="
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255,255,255,0.1);
+        border-top: 4px solid #4caf50;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 16px;
+      "></div>
+      <div class="loading-text" style="
+        color: #888;
+        font-size: 16px;
+        font-weight: 500;
+      ">読み込み中...</div>
+    </div>
+  `;
 
   try {
     const savedSettings = await window.electronAPI.loadJson("channels");
@@ -9,7 +34,20 @@ async function loadBoothItemsFromConfig(container, isGrid = false, forceReload =
     const config = savedSettings?.[guildId];
 
     if (!config) {
-      container.textContent = "設定が見つかりません。";
+      container.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px 20px;
+          text-align: center;
+          color: #f44336;
+        ">
+          <i class="fas fa-exclamation-triangle" style="font-size: 32px; margin-bottom: 16px;"></i>
+          <div style="font-size: 16px; font-weight: 500;">設定が見つかりません</div>
+        </div>
+      `;
       return;
     }
 
@@ -64,14 +102,40 @@ async function loadBoothItemsFromConfig(container, isGrid = false, forceReload =
     
     renderBoothItems(container, allItems, isGrid, latestOnlyKeywords);
   } catch (e) {
-    container.textContent = "読み込みに失敗しました。";
+    container.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        text-align: center;
+        color: #f44336;
+      ">
+        <i class="fas fa-times-circle" style="font-size: 32px; margin-bottom: 16px;"></i>
+        <div style="font-size: 16px; font-weight: 500;">読み込みに失敗しました</div>
+      </div>
+    `;
     console.error(e);
   }
 }
 
 function renderBoothItems(container, allItems, isGrid, latestOnlyKeywords = []) {
   if (!allItems || !allItems.length) {
-    container.textContent = "新着アイテムがありません。";
+    container.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        text-align: center;
+        color: #888;
+      ">
+        <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 16px;"></i>
+        <div style="font-size: 16px; font-weight: 500;">新着アイテムがありません</div>
+      </div>
+    `;
     return;
   }
   // カテゴリごとにグループ化
@@ -110,14 +174,28 @@ function renderBoothItems(container, allItems, isGrid, latestOnlyKeywords = []) 
             ${item.price} / ${item.author}
           </span>
         </div>
-        <img src=\"${item.author_icon_url}\" alt=\"作者アイコン\" style=\"width:32px; height:32px; border-radius:50%;\">
+        <div style=\"display: flex; flex-direction: column; align-items: center; gap: 8px;\">
+          <img src=\"${item.author_icon_url}\" alt=\"作者アイコン\" style=\"width:32px; height:32px; border-radius:50%;\">
+          <button class=\"favorite-btn\" data-url=\"${item.url}\" style=\"
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+          \" title=\"お気に入りに追加\">
+            <i class=\"far fa-heart\"></i>
+          </button>
+        </div>
       `;
       const link = itemEl.querySelector("a");
       link.addEventListener("click", (e) => {
         e.preventDefault();
         window.electronAPI.openExternal(link.href);
       });
-      const img = itemEl.querySelector('img');
+      const img = itemEl.querySelector('img[alt]');
       img.style.cursor = 'pointer';
       img.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -128,6 +206,34 @@ function renderBoothItems(container, allItems, isGrid, latestOnlyKeywords = []) 
           modal.style.display = 'flex';
         }
       });
+      
+      // お気に入りボタンのイベントハンドラー
+      const favoriteBtn = itemEl.querySelector('.favorite-btn');
+      favoriteBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // グローバル関数を呼び出し
+        if (typeof window.toggleFavorite === 'function') {
+          // お気に入りに追加する場合、画像をダウンロード
+          const isAdding = favoriteBtn.querySelector('i').classList.contains('far');
+          if (isAdding && typeof imageManager !== 'undefined') {
+            try {
+              const localImageUrl = await imageManager.downloadImage(item.img_url, item.url);
+              // ローカル画像URLでアイテムデータを更新
+              const itemWithLocalImage = { ...item, image: localImageUrl };
+              window.toggleFavorite(item.url, itemWithLocalImage);
+            } catch (error) {
+              console.error('画像ダウンロードエラー:', error);
+              // エラー時は元のURLでお気に入りに追加
+              window.toggleFavorite(item.url, item);
+            }
+          } else {
+            window.toggleFavorite(item.url, item);
+          }
+        }
+      });
+      
       itemsContainer.appendChild(itemEl);
     });
     

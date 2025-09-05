@@ -27,10 +27,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return null;
     }
   },
+  fetchUpdateMd: async () => {
+    try {
+      const url = "https://raw.githubusercontent.com/irlshia/vrcnavi/refs/heads/main/update.md";
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return await res.text();
+    } catch (e) {
+      return null;
+    }
+  },
   // Boothキャッシュ関連API
   getBoothCache: () => ipcRenderer.invoke("get-booth-cache"),
   saveBoothCache: (data) => ipcRenderer.invoke("save-booth-cache", data),
-  clearBoothCache: () => ipcRenderer.invoke("clear-booth-cache")
+  clearBoothCache: () => ipcRenderer.invoke("clear-booth-cache"),
+  // 画像管理API
+  saveImage: (filename, base64Data) => ipcRenderer.invoke("save-image", filename, base64Data),
+  deleteImage: (filename) => ipcRenderer.invoke("delete-image", filename),
+  getImage: (filename) => ipcRenderer.invoke("get-image", filename)
 });
 
 contextBridge.exposeInMainWorld('windowControls', {

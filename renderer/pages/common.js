@@ -838,8 +838,14 @@ const imageManager = {
   },
 
   // ローカル画像のURLを生成
-  getLocalImageUrl(filename) {
-    return `local://${filename}`;
+  async getLocalImageUrl(filename) {
+    try {
+      const url = await window.electronAPI.getLocalImageUrl(filename);
+      return url || `local://${filename}`;
+    } catch (error) {
+      console.error('ローカル画像URL取得エラー:', error);
+      return `local://${filename}`;
+    }
   },
 
   // 画像ファイルを削除
@@ -851,6 +857,9 @@ const imageManager = {
     }
   }
 };
+
+// imageManagerをwindowに公開
+window.imageManager = imageManager;
 
 window.addEventListener('beforeunload', () => {
   clearBoothItemsCache();

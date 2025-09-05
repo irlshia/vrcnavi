@@ -343,6 +343,17 @@ async function getImage(filename) {
   }
 }
 
+// ローカル画像のURLを取得
+function getLocalImageUrl(filename) {
+  try {
+    const imagePath = path.join(IMAGES_DIR, filename);
+    return `file://${imagePath.replace(/\\/g, '/')}`;
+  } catch (e) {
+    console.error(`[Image] URL生成エラー: ${filename}`, e);
+    return null;
+  }
+}
+
 // グローバルで一度だけIPCハンドラを登録
 ipcMain.handle("getBoothItemsCombined", async (event, categories, keywords, shops, maxItems) => {
   return await getBoothItemsCombined(categories, keywords, shops, maxItems);
@@ -427,6 +438,9 @@ ipcMain.handle("delete-image", async (event, filename) => {
 });
 ipcMain.handle("get-image", async (event, filename) => {
   return await getImage(filename);
+});
+ipcMain.handle("get-local-image-url", async (event, filename) => {
+  return getLocalImageUrl(filename);
 });
 
 function createWindow() {

@@ -44,7 +44,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 画像管理API
   saveImage: (filename, base64Data) => ipcRenderer.invoke("save-image", filename, base64Data),
   deleteImage: (filename) => ipcRenderer.invoke("delete-image", filename),
-  getImage: (filename) => ipcRenderer.invoke("get-image", filename)
+  getImage: (filename) => ipcRenderer.invoke("get-image", filename),
+  getLocalImageUrl: (filename) => ipcRenderer.invoke("get-local-image-url", filename)
 });
 
 contextBridge.exposeInMainWorld('windowControls', {

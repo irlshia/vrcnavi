@@ -146,6 +146,21 @@ function FavoritesPage() {
   // お気に入りデータを管理
   let favoritesData = [];
 
+  // 画像URLを取得（ローカル画像対応）
+  async function getImageUrl(imageUrl) {
+    if (imageUrl && imageUrl.startsWith('local://')) {
+      // ローカル画像の場合、common.jsのgetLocalImageUrlを使用
+      if (window.imageManager && window.imageManager.getLocalImageUrl) {
+        const filename = imageUrl.replace('local://', '');
+        return await window.imageManager.getLocalImageUrl(filename);
+      }
+      // フォールバック：直接ファイルパスに変換
+      const filename = imageUrl.replace('local://', '');
+      return `file://${filename}`;
+    }
+    return imageUrl;
+  }
+
   // お気に入りデータを読み込み
   async function loadFavorites() {
     try {
@@ -179,7 +194,7 @@ function FavoritesPage() {
   }
 
   // お気に入り一覧を表示
-  function renderFavorites() {
+  async function renderFavorites() {
     if (favoritesData.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 60px 20px; color: #888;">
@@ -195,7 +210,7 @@ function FavoritesPage() {
     const categories = [...new Set(favoritesData.map(item => item.category))];
     let html = '';
     
-    categories.forEach(category => {
+    for (const category of categories) {
       const categoryItems = favoritesData.filter(item => item.category === category);
       html += `
         <div class="category-block" style="margin-bottom: 32px;">
@@ -206,7 +221,8 @@ function FavoritesPage() {
           <div class="items-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
       `;
       
-      categoryItems.forEach(item => {
+      for (const item of categoryItems) {
+        const imageUrl = await getImageUrl(item.image);
         html += `
           <div class="item-card" style="
             background: rgba(255,255,255,0.05);
@@ -217,12 +233,12 @@ function FavoritesPage() {
             backdrop-filter: blur(10px);
           " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.15)'" 
              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-            <img src="${item.image}" alt="${item.title}" style="
+            <img src="${imageUrl}" alt="${item.title}" style="
               width: 100%;
               height: 200px;
               object-fit: cover;
               cursor: pointer;
-            " onclick="openImageModal('${item.image}')">
+            " onclick="openImageModal('${imageUrl}')">
             <div style="padding: 16px;">
               <h4 style="margin: 0 0 8px 0; color: #fff; font-size: 16px; line-height: 1.4;">
                 <a href="${item.url}" target="_blank" style="color: #6cf; text-decoration: none;" onclick="openExternal('${item.url}')">
@@ -250,13 +266,13 @@ function FavoritesPage() {
             </div>
           </div>
         `;
-      });
+      }
       
       html += `
           </div>
         </div>
       `;
-    });
+    }
 
     container.innerHTML = html;
 
@@ -340,7 +356,7 @@ function FavoritesPage() {
   });
 
   // お気に入りをエクスポート
-  function exportFavorites(format) {
+  async function exportFavorites(format) {
     if (favoritesData.length === 0) {
       showNotification("エクスポートするお気に入りがありません", 'error');
       return;
@@ -348,7 +364,7 @@ function FavoritesPage() {
 
     try {
       if (format === 'html') {
-        const htmlContent = generateFavoritesHTML(favoritesData);
+        const htmlContent = await generateFavoritesHTML(favoritesData);
         downloadFile(htmlContent, 'favorites.html', 'text/html');
         showNotification("HTMLファイルをエクスポートしました", 'success');
       } else if (format === 'excel') {
@@ -363,7 +379,7 @@ function FavoritesPage() {
   }
 
   // HTML生成
-  function generateFavoritesHTML(data) {
+  async function generateFavoritesHTML(data) {
     const categories = [...new Set(data.map(item => item.category))];
     let html = `
 <!DOCTYPE html>
@@ -410,7 +426,7 @@ function FavoritesPage() {
     </div>
 `;
 
-    categories.forEach(category => {
+    for (const category of categories) {
       const categoryItems = data.filter(item => item.category === category);
       html += `
     <div class="category">
@@ -418,10 +434,11 @@ function FavoritesPage() {
         <div class="items-grid">
 `;
       
-      categoryItems.forEach(item => {
+      for (const item of categoryItems) {
+        const imageUrl = await getImageUrl(item.image);
         html += `
             <div class="item-card">
-                <img src="${item.image}" alt="${item.title}" class="item-image">
+                <img src="${imageUrl}" alt="${item.title}" class="item-image">
                 <div class="item-content">
                     <div class="item-title">
                         <a href="${item.url}" target="_blank">${item.title}</a>
@@ -433,13 +450,13 @@ function FavoritesPage() {
                 </div>
             </div>
 `;
-      });
+      }
       
       html += `
         </div>
     </div>
 `;
-    });
+    }
 
     html += `
     <div class="export-info">

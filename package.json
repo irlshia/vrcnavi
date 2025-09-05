@@ -1,0 +1,48 @@
+{
+  "name": "vrcnavi",
+  "version": "1.3.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.Irlshia.vrcnavi",
+    "productName": "VRCNAVI",
+    "copyright": "Copyright © 2025 Irlshia",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "irlshia",
+        "repo": "vrcnavi"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.0",
+    "electron-updater": "^6.6.2",
+    "node-fetch": "^2.7.0",
+    "puppeteer": "^24.11.2"
+  }
+}

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>VRCNAVI</title>
+
+  <!-- FontAwesome 5（無料アイコンのみ）-->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div id="titlebar">
+    <div class="drag-region">
+      <span class="title-text">VRCNAVI <span id="app-version">読み込み中...</span></span>
+      <span id="update-status" style="margin-left: 8px; font-size: 12px; color: #888;"></span>
+    </div>
+    <div class="window-controls">
+      <button id="min-btn" class="control-btn" title="最小化" aria-label="最小化">
+        <svg width="12" height="2" viewBox="0 0 12 2" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="12" height="2" fill="currentColor"/></svg>
+      </button>
+      <button id="max-btn" class="control-btn" title="最大化" aria-label="最大化">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" stroke-width="2" rx="2"/>
+        </svg>
+      </button>
+      <button id="close-btn" class="control-btn close-btn" title="閉じる" aria-label="閉じる">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div id="loader">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+  <div id="root" style="display:none;">
+    <aside id="sidebar">
+      <h1 class="logo">VRCNAVI</h1>
+      <nav id="nav"></nav>
+    </aside>
+    <main id="pages"></main>
+  </div>
+  <script src="renderer.js" defer></script>
+</body>

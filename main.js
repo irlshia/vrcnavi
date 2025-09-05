@@ -349,7 +349,7 @@ function createWindow() {
     height: 720,
     minWidth: 800,
     minHeight: 500,
-    frame: true,
+    frame: false,
     icon: path.join(__dirname, "assets", "icon.png"),
     backgroundColor: "#1e1e1e",
     webPreferences: {
@@ -357,7 +357,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
-      devTools: true
+      devTools: false
     },
   });
   console.log("[main] BrowserWindow生成完了");
